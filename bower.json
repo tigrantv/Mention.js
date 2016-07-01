@@ -1,0 +1,19 @@
+{
+  "name": "mention-tigo",
+  "description": "Lightweight wrapper for adding @user mention functionality to Twitter Bootstraps",
+  "keywords": [
+    "js",
+    "responsive",
+    "front-end",
+    "web"
+  ],
+  "homepage": "https://github.com/tigrantv/Mention.js",
+  "license": "MIT",
+  "moduleType": "globals",
+  "main": [
+    "mention.js"
+  ],
+  "dependencies": {
+    "jquery": "1.9.1 - 2"
+  }
+}
