@@ -1,19 +1,20 @@
 /*jslint forin: true */
 
-;(function ($) {
+;(function($) {
     $.fn.extend({
-        mention: function (options) {
+        mention: function(options) {
             this.opts = {
                 users: [],
                 delimiter: '@',
                 sensitive: true,
                 emptyQuery: false,
                 queryBy: ['name', 'username'],
-                typeaheadOpts: {}
+                typeaheadOpts: {},
+                offset: 20
             };
 
             var settings = $.extend({}, this.opts, options),
-                _checkDependencies = function () {
+                _checkDependencies = function() {
                     if (typeof $ == 'undefined') {
                         throw new Error("jQuery is Required");
                     }
@@ -24,7 +25,7 @@
                     }
                     return true;
                 },
-                _extractCurrentQuery = function (query, caratPos) {
+                _extractCurrentQuery = function(query, caratPos) {
                     var i;
                     for (i = caratPos; i >= 0; i--) {
                         if (query[i] == settings.delimiter) {
@@ -33,14 +34,14 @@
                     }
                     return query.substring(i, caratPos);
                 },
-                _matcher = function (itemProps) {
+                _matcher = function(itemProps) {
                     var i;
 
-                    if (settings.emptyQuery) {
+                    if(settings.emptyQuery){
                         var q = (this.query.toLowerCase()),
                             caratPos = this.$element[0].selectionStart,
-                            lastChar = q.slice(caratPos - 1, caratPos);
-                        if (lastChar == settings.delimiter) {
+                            lastChar = q.slice(caratPos-1,caratPos);
+                        if(lastChar==settings.delimiter){
                             return true;
                         }
                     }
@@ -50,7 +51,7 @@
                             var item = itemProps[settings.queryBy[i]].toLowerCase(),
                                 usernames = (this.query.toLowerCase()).match(new RegExp(settings.delimiter + '\\w+', "g")),
                                 j;
-                            if (!!usernames) {
+                            if ( !! usernames) {
                                 for (j = 0; j < usernames.length; j++) {
                                     var username = (usernames[j].substring(1)).toLowerCase(),
                                         re = new RegExp(settings.delimiter + item, "g"),
@@ -64,7 +65,7 @@
                         }
                     }
                 },
-                _updater = function (item) {
+                _updater = function(item) {
                     var data = this.query,
                         caratPos = this.$element[0].selectionStart,
                         i;
@@ -83,17 +84,17 @@
                     this.tempQuery = data;
 
                     var id = 0;
-                    for (var a = 0; a < settings.users.length; a++) {
+                    for (var a = 0; a <  settings.users.length ; a++) {
                         if (settings.users[a]['username'] == item) {
                             id = settings.users[a]['id'];
-                            $(".mentionBox").after('<input type="hidden" name="mentionedUsers[]" value="' + item + id + '">');
+                            $(".mentionBox").after('<input type="hidden" class="mentionedUsers" name="mentionedUsers[]" value="' + item + id + '">');
                             break;
                         }
                     }
 
                     return data;
                 },
-                _sorter = function (items) {
+                _sorter = function(items) {
                     if (items.length && settings.sensitive) {
                         var currentUser = _extractCurrentQuery(this.query, this.$element[0].selectionStart).substring(1),
                             i, len = items.length,
@@ -131,9 +132,29 @@
                     }
                     return items;
                 },
-                _render = function (items) {
+                _show = function () {
+                    var pos = $.extend({}, this.$element.position(), {
+                        scrollTop: this.$element[0].scrollTop,
+                        scrollLeft: this.$element[0].scrollLeft,
+                        offsetTop: this.$element[0].offsetTop,
+                        offsetLeft: this.$element[0].offsetLeft,
+                        coordinates: _getCarrentCoordinates(this.$element[0], this.$element[0].selectionEnd)
+                    })
+
+                    this.$menu
+                        .insertAfter(this.$element)
+                        .css({
+                            top: pos.offsetTop - pos.scrollTop + pos.coordinates.top + settings.offset
+                            ,left: pos.offsetLeft - pos.scrollLeft + pos.coordinates.left
+                        })
+                        .show()
+
+                    this.shown = true
+                    return this
+                },
+                _render = function(items) {
                     var that = this;
-                    items = $(items).map(function (i, item) {
+                    items = $(items).map(function(i, item) {
 
                         i = $(that.options.item).attr('data-value', item.username);
 
@@ -153,18 +174,54 @@
                     items.first().addClass('active');
                     this.$menu.html(items);
                     return this;
-                };
+                },
+                _getCarrentCoordinates = function (element, position) {
+
+                    var mirror_div, computed, style;
+
+                    mirror_div = document.createElement('div');
+                    $(element).after(mirror_div);
+
+                    style = mirror_div.style;
+                    computed = getComputedStyle(element);
+
+                    style.whiteSpace = 'pre-wrap';
+                    style.position = 'absolute';
+                    if (element.nodeName !== 'INPUT') {
+                        style.wordWrap = 'break-word';
+                    }
+
+                    mirror_div.textContent = element.value.substring(0, position);
+
+                    if (element.nodeName === 'INPUT'){
+                        mirror_div.textContent = mirror_div.textContent.replace(/\s/g, "\u00a0");
+                    }
+                    var span = document.createElement('span');
+
+                    span.textContent = element.value.substring(position) || '.';
+                    mirror_div.appendChild(span);
+
+                    var coordinates = {
+                        top: span.offsetTop + parseInt(computed['borderTopWidth']),
+                        left: span.offsetLeft + parseInt(computed['borderLeftWidth'])
+                    };
+
+                    $(mirror_div).remove();
+
+                    return coordinates;
+                }
 
             $.fn.typeahead.Constructor.prototype.render = _render;
 
-            return this.each(function () {
+            return this.each(function() {
                 var _this = $(this);
                 if (_checkDependencies()) {
                     _this.typeahead($.extend({
                         source: settings.users,
                         matcher: _matcher,
                         updater: _updater,
-                        sorter: _sorter
+                        sorter: _sorter,
+                        show: _show
                     }, settings.typeaheadOpts));
                 }
             });
